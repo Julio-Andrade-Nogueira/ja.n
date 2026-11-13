@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0e13"><meta name="description" content="GameJobs Radar — central de vagas para a indústria de games.">
+  <title>GameJobs Radar — Seu radar de oportunidades</title>
+  <link rel="stylesheet" href="radar-assets/styles.css">
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand"><div class="brand-mark">◎</div><div><strong>GAMEJOBS</strong><span>RADAR <b>v1.1</b></span></div></div>
+      <p class="panel-status" role="note">O painel principal ja.n será restaurado separadamente.</p>
+      <div class="side-label">ESPAÇO DE TRABALHO</div>
+      <nav id="nav" aria-label="Navegação">
+        <button class="nav-btn active" data-view="all"><span class="ico">▦</span> Todas as vagas <span class="nav-count" id="countAll">0</span></button>
+        <button class="nav-btn" data-view="new"><span class="ico">◈</span> Não visualizadas <span class="nav-count" id="countNew">0</span></button>
+        <button class="nav-btn" data-view="clicked"><span class="ico">↗</span> Links acessados <span class="nav-count" id="countClicked">0</span></button>
+        <button class="nav-btn" data-view="saved"><span class="ico">☆</span> Salvas <span class="nav-count" id="countSaved">0</span></button>
+        <button class="nav-btn" data-view="applied"><span class="ico">◉</span> Candidaturas <span class="nav-count" id="countApplied">0</span></button>
+        <button class="nav-btn" data-view="closed"><span class="ico">⌛</span> Encerradas <span class="nav-count" id="countClosed">0</span></button>
+      </nav>
+      <div class="side-bottom">
+        <div class="side-status"><span id="connectDot" class="dot amber"></span><div><strong id="connectName">Modo local</strong><small id="connectHint">Dados salvos neste aparelho</small></div></div>
+        <button class="side-action" id="openSettings">⚙ &nbsp; Dados locais</button>
+        <button class="side-action" id="exportJson">⇩ &nbsp; Exportar vagas (JSON)</button>
+      </div>
+    </aside>
+    <main class="main">
+      <header class="topbar"><button id="menuBtn" class="mobile-menu" aria-label="Abrir menu">☰</button><div class="crumb">Central de oportunidades <span>/</span> <b id="crumbCurrent">Todas as vagas</b></div><div class="top-right"><span class="live-dot"></span><span id="syncText">Sem conexão com servidor</span><button class="icon-btn" id="refreshBtn" title="Atualizar vagas">↻</button></div></header>
+      <div class="page">
+        <div class="page-intro"><div><div class="eyebrow">SEU PRÓXIMO PASSO NA INDÚSTRIA</div><h1 id="pageTitle">Radar de oportunidades<span class="period">.</span></h1><p>Encontre, avalie e acompanhe vagas em todas as áreas de games.</p></div><div class="intro-actions"><button class="btn secondary" id="importBtn">↑ Importar vagas</button><button class="btn primary" id="topSettings">Dados locais</button></div></div>
+        <div id="notice" class="notice"><span>ⓘ</span><div id="noticeText">Painel em modo local. Importe vagas ou abra a demonstração para explorar.</div><button id="noticeClose" aria-label="Fechar aviso">×</button></div>
+        <section class="metrics" aria-label="Indicadores"><div class="metric"><div class="metric-label">Vagas ativas <span>◈</span></div><strong id="mActive">0</strong><small>No banco de oportunidades</small></div><div class="metric"><div class="metric-label">Alta compatibilidade <span>✦</span></div><strong id="mHigh">0</strong><small>Pontuação ≥ 75/100</small></div><div class="metric"><div class="metric-label">Não visualizadas <span>◉</span></div><strong id="mNew">0</strong><small>Prontas para análise</small></div><div class="metric"><div class="metric-label">Candidaturas <span>↗</span></div><strong id="mApplied">0</strong><small>Marcadas por você</small></div></section>
+        <section class="search-panel">
+          <div class="section-header"><div><h2>Explorar vagas <span id="resultCount" class="results-count">0</span></h2><div class="subtle" id="resultSubtitle">Filtre oportunidades com seus critérios.</div></div><button class="btn filter-toggle" id="filtersToggle">☷ Filtros <span id="filterCount"></span></button></div>
+          <div class="searchline"><div class="searchinput"><span>⌕</span><input id="search" aria-label="Buscar vagas" type="search" placeholder="Cargo, empresa, ferramenta, palavra-chave..." autocomplete="off"></div><select id="sort" aria-label="Ordenação"><option value="score">Maior compatibilidade</option><option value="recent">Mais recentes</option><option value="deadline">Encerram primeiro</option><option value="company">Empresa A–Z</option><option value="salary">Maior salário</option></select></div>
+          <div class="filters" id="filters"><div class="filter-grid">
+            <label>Área de atuação<select id="fArea"><option value="">Todas as áreas</option></select></label>
+            <label>Modalidade<select id="fMode"><option value="">Todas</option><option value="Remoto">Remoto</option><option value="Híbrido">Híbrido</option><option value="Presencial">Presencial</option><option value="Não informado">Não informado</option></select></label>
+            <label>Senioridade<select id="fLevel"><option value="">Todos os níveis</option><option>Estágio</option><option>Júnior</option><option>Pleno</option><option>Sênior</option><option>Lead</option><option>Não informado</option></select></label>
+            <label>Contrato<select id="fContract"><option value="">Qualquer contrato</option><option>Integral</option><option>Meio período</option><option>Freelance</option><option>Temporário</option><option>Não informado</option></select></label>
+            <label>Compatibilidade mínima<select id="fScore"><option value="0">Qualquer nota</option><option value="50">50+</option><option value="65">65+</option><option value="75">75+</option><option value="85">85+</option></select></label>
+            <label>Publicado<select id="fDate"><option value="">Qualquer data</option><option value="3">Últimos 3 dias</option><option value="7">Últimos 7 dias</option><option value="30">Últimos 30 dias</option></select></label>
+            <label>Localização / país<input id="fLocation" placeholder="Brasil, BH, global..."></label>
+            <label>Empresa<input id="fCompany" placeholder="Nome da empresa"></label>
+            <label>Jornada<select id="fHours"><option value="">Qualquer jornada</option><option value="known">Com jornada informada</option><option value="part">Até 6h/dia</option><option value="full">Mais de 6h/dia</option></select></label>
+            <label>Salário<select id="fSalary"><option value="">Qualquer</option><option value="known">Salário informado</option><option value="unknown">Não informado</option></select></label>
+            <label>Elegibilidade<select id="fEligibility"><option value="">Qualquer situação</option><option value="Sim">Aceita Brasil</option><option value="Não">Não aceita Brasil</option><option value="A confirmar">A confirmar</option></select></label>
+            <label>Idioma<select id="fLanguage"><option value="">Qualquer idioma</option><option value="Inglês">Inglês</option><option value="Português">Português</option><option value="Não informado">Não informado</option></select></label>
+          </div><div class="filter-foot"><button id="clearFilters">Limpar filtros</button><span>Campos não informados não são estimados.</span></div></div>
+        </section>
+        <div id="jobList" class="job-list" aria-live="polite"></div>
+        <div id="emptyState" class="empty-state" hidden><div class="empty-icon">◎</div><h3 id="emptyTitle">Nenhuma vaga encontrada</h3><p id="emptyText">Ajuste os filtros ou importe vagas para começar.</p><div class="empty-buttons"><button id="emptyDemo" class="btn secondary">Abrir demonstração</button><button id="emptyImport" class="btn primary">Importar JSON</button></div></div>
+        <footer>GAMEJOBS RADAR · Vagas oficiais quando há origem verificada · Notas orientativas não garantem elegibilidade.</footer>
+      </div>
+    </main>
+  </div>
+  <div id="veil" class="veil" hidden></div>
+  <aside id="drawer" class="drawer" aria-label="Detalhes da vaga" aria-hidden="true"><div class="drawer-top"><span>DETALHES DA OPORTUNIDADE</span><button id="closeDrawer" class="close-btn" aria-label="Fechar detalhes">×</button></div><div class="drawer-scroll" id="drawerContent"></div></aside>
+  <div id="modal" class="modal-wrap" hidden><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><div class="modal-top"><h2 id="modalTitle">Configurações</h2><button class="close-btn" id="closeModal" aria-label="Fechar janela">×</button></div><div id="modalContent"></div></div></div>
+  <input id="fileInput" type="file" accept=".json,application/json" hidden>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="radar-assets/config.js"></script>
+  <script src="radar-assets/app.js" defer></script>
+</body></html>
