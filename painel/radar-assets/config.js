@@ -1,5 +1,5 @@
-// Configuração pública reservada para uma futura etapa de integração.
-// Nesta entrega a interface funciona apenas no navegador, sem conexão com Supabase.
+// Preencha após aplicar as migrações. Vazio mantém o modo local explicitamente.
+// Use a URL do projeto e SOMENTE a chave pública publishable (ou JWT anon legado).
 // Nunca adicione credenciais secretas a arquivos publicados no GitHub Pages.
 window.GAMEJOBS_CONFIG = {
   supabaseUrl: "",

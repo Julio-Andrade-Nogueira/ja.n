@@ -22,23 +22,23 @@
       </nav>
       <div class="side-bottom">
         <div class="side-status"><span id="connectDot" class="dot amber"></span><div><strong id="connectName">Modo local</strong><small id="connectHint">Dados salvos neste aparelho</small></div></div>
-        <button class="side-action" id="openSettings">⚙ &nbsp; Dados locais</button>
+        <button class="side-action" id="openSettings">⚙ &nbsp; Conta e dados</button>
         <button class="side-action" id="exportJson">⇩ &nbsp; Exportar vagas (JSON)</button>
       </div>
     </aside>
     <main class="main">
       <header class="topbar"><button id="menuBtn" class="mobile-menu" aria-label="Abrir menu">☰</button><div class="crumb">Central de oportunidades <span>/</span> <b id="crumbCurrent">Todas as vagas</b></div><div class="top-right"><span class="live-dot"></span><span id="syncText">Sem conexão com servidor</span><button class="icon-btn" id="refreshBtn" title="Atualizar vagas">↻</button></div></header>
       <div class="page">
-        <div class="page-intro"><div><div class="eyebrow">SEU PRÓXIMO PASSO NA INDÚSTRIA</div><h1 id="pageTitle">Radar de oportunidades<span class="period">.</span></h1><p>Encontre, avalie e acompanhe vagas em todas as áreas de games.</p></div><div class="intro-actions"><button class="btn secondary" id="importBtn">↑ Importar vagas</button><button class="btn primary" id="topSettings">Dados locais</button></div></div>
+        <div class="page-intro"><div><div class="eyebrow">SEU PRÓXIMO PASSO NA INDÚSTRIA</div><h1 id="pageTitle">Radar de oportunidades<span class="period">.</span></h1><p>Encontre, avalie e acompanhe vagas em todas as áreas de games.</p></div><div class="intro-actions"><button class="btn secondary" id="importBtn">↑ Importar vagas</button><button class="btn primary" id="topSettings">Conta e dados</button></div></div>
         <div id="notice" class="notice"><span>ⓘ</span><div id="noticeText">Painel em modo local. Importe vagas ou abra a demonstração para explorar.</div><button id="noticeClose" aria-label="Fechar aviso">×</button></div>
         <section class="metrics" aria-label="Indicadores"><div class="metric"><div class="metric-label">Vagas ativas <span>◈</span></div><strong id="mActive">0</strong><small>No banco de oportunidades</small></div><div class="metric"><div class="metric-label">Alta compatibilidade <span>✦</span></div><strong id="mHigh">0</strong><small>Pontuação ≥ 75/100</small></div><div class="metric"><div class="metric-label">Não visualizadas <span>◉</span></div><strong id="mNew">0</strong><small>Prontas para análise</small></div><div class="metric"><div class="metric-label">Candidaturas <span>↗</span></div><strong id="mApplied">0</strong><small>Marcadas por você</small></div></section>
         <section class="search-panel">
           <div class="section-header"><div><h2>Explorar vagas <span id="resultCount" class="results-count">0</span></h2><div class="subtle" id="resultSubtitle">Filtre oportunidades com seus critérios.</div></div><button class="btn filter-toggle" id="filtersToggle">☷ Filtros <span id="filterCount"></span></button></div>
-          <div class="searchline"><div class="searchinput"><span>⌕</span><input id="search" aria-label="Buscar vagas" type="search" placeholder="Cargo, empresa, ferramenta, palavra-chave..." autocomplete="off"></div><select id="sort" aria-label="Ordenação"><option value="score">Maior compatibilidade</option><option value="recent">Mais recentes</option><option value="deadline">Encerram primeiro</option><option value="company">Empresa A–Z</option><option value="salary">Maior salário</option></select></div>
+          <div class="searchline"><div class="searchinput"><span>⌕</span><input id="search" aria-label="Buscar vagas" type="search" placeholder="Cargo, empresa, ferramenta, palavra-chave..." autocomplete="off"></div><select id="sort" aria-label="Ordenação"><option value="score">Prioridade e compatibilidade</option><option value="recent">Mais recentes</option><option value="deadline">Encerram primeiro</option><option value="company">Empresa A–Z</option><option value="salary">Maior salário</option></select></div>
           <div class="filters" id="filters"><div class="filter-grid">
             <label>Área de atuação<select id="fArea"><option value="">Todas as áreas</option></select></label>
             <label>Modalidade<select id="fMode"><option value="">Todas</option><option value="Remoto">Remoto</option><option value="Híbrido">Híbrido</option><option value="Presencial">Presencial</option><option value="Não informado">Não informado</option></select></label>
-            <label>Senioridade<select id="fLevel"><option value="">Todos os níveis</option><option>Estágio</option><option>Júnior</option><option>Pleno</option><option>Sênior</option><option>Lead</option><option>Não informado</option></select></label>
+            <label>Senioridade<select id="fLevel"><option value="">Todos os níveis</option><option>Estágio</option><option>Trainee</option><option>Júnior</option><option>Pleno</option><option>Sênior</option><option>Lead</option><option>Não informado</option></select></label>
             <label>Contrato<select id="fContract"><option value="">Qualquer contrato</option><option>Integral</option><option>Meio período</option><option>Freelance</option><option>Temporário</option><option>Não informado</option></select></label>
             <label>Compatibilidade mínima<select id="fScore"><option value="0">Qualquer nota</option><option value="50">50+</option><option value="65">65+</option><option value="75">75+</option><option value="85">85+</option></select></label>
             <label>Publicado<select id="fDate"><option value="">Qualquer data</option><option value="3">Últimos 3 dias</option><option value="7">Últimos 7 dias</option><option value="30">Últimos 30 dias</option></select></label>
@@ -62,5 +62,7 @@
   <input id="fileInput" type="file" accept=".json,application/json" hidden>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="radar-assets/config.js"></script>
+  <script src="radar-assets/supabase-client.js" defer></script>
+  <script src="radar-assets/sync.js" defer></script>
   <script src="radar-assets/app.js" defer></script>
 </body></html>

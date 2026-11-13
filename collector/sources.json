@@ -1,0 +1,5 @@
+[
+  {"type":"greenhouse","board":"wildlifestudios","company":"Wildlife Studios","careers_url":"https://careers.wildlifestudios.com/","enabled":true},
+  {"type":"greenhouse","board":"epicgames","company":"Epic Games","careers_url":"https://www.epicgames.com/site/careers/jobs","enabled":true},
+  {"type":"lever","board":"xsolla","company":"Xsolla","careers_url":"https://jobs.lever.co/xsolla/","enabled":true}
+]
