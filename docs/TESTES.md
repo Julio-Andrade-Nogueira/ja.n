@@ -17,6 +17,7 @@ Se já houver Chromium instalado, use `CHROMIUM_EXECUTABLE=/caminho/do/chromium 
 Os testes verificam:
 
 - Normalização sem inventar publicação, salário, jornada ou idioma obrigatório; classificação de várias áreas e geografia.
+- Títulos (`text` na Lever e `title` na Greenhouse) tratados como texto: preservação de `<...>`, entidades e espaços normalizados. Título ausente, vazio, não textual ou acima de 500 caracteres reprova a fonte; não há substituição por descrição/URL nem truncamento. Um anúncio inválido entre anúncios válidos impede toda a reconciliação de ausências dessa fonte e mantém as origens como não verificadas, sem incrementar ausências nem consultar detalhes para encerrar vagas.
 - Identidade estável, remoção limitada de rastreadores, atualização de anúncios e prevenção de duplicatas por URL oficial.
 - Pontuação justificável e nota ausente quando não há evidência suficiente.
 - Encerramento com ausências reiteradas e 404/410 individual, preservando vagas em falhas de fonte, paginação incompleta ou dados inválidos.
@@ -24,6 +25,8 @@ Os testes verificam:
 - Execução do SQL num motor PostgreSQL local **PGlite**, com simulação mínima de `auth.users`/`auth.uid()`: constraints, privilégios anônimos, RLS cruzada entre duas contas, patch por campo e importação que não sobrescreve registros existentes.
 - Cache separado por conta, retomada de alterações sem conexão, respostas atrasadas de outra conta e preservação de edições durante uma requisição.
 - Navegador Chromium com respostas Supabase controladas: redirecionamento `/ja.n/`, recursos relativos, dados antigos, modo fictício separado, todos os filtros, login, troca de conta, notas, favoritos, falhas e largura de tela de celular.
+
+O teste de navegador intercepta `config.js` separadamente em cada contexto: configuração vazia deve mostrar **Modo local**; configuração pública de fixture deve mostrar **Vagas públicas** antes do login. Assim, o teste independe do preenchimento do arquivo público versionado e não consulta o projeto Supabase real.
 
 As respostas de API nos testes são **fixtures**, não vagas reais. Os testes locais não comprovam que as credenciais, e-mail, políticas de um projeto remoto ou APIs de terceiros estejam funcionando na sua conta.
 

@@ -33,6 +33,7 @@ test('Pages prefix, legacy data, filters, auth, private sync, account switching 
   await local.addInitScript(()=>{if(!localStorage.getItem('gamejobs-radar-v1'))localStorage.setItem('gamejobs-radar-v1',JSON.stringify({jobs:[{id:'legacy',title:'Legacy fixture',company:'Fixture',status:'unverified'}],states:{legacy:{notes:'preserved legacy note',saved:true}}}))});
   const page=await local.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto(base);await page.waitForURL('**/painel/radar.html');await page.locator('.job-title').waitFor();
+  assert.deepEqual(await page.evaluate(()=>window.GAMEJOBS_CONFIG),{supabaseUrl:'',supabasePublishableKey:''});
   assert.match(await page.locator('#connectName').textContent(),/Modo local/);
   await page.locator('#topSettings').click();await page.locator('#settingsDemo').click();
   assert.equal(await page.locator('.job').count(),6);
@@ -62,6 +63,8 @@ test('Pages prefix, legacy data, filters, auth, private sync, account switching 
   });
   const app=await context.newPage();app.on('pageerror',e=>errors.push(e.message));
   await app.goto(base+'painel/radar.html');await waitFor(async()=>await app.locator('.job').count()===2);
+  assert.equal(await app.evaluate(()=>window.GAMEJOBS_CONFIG.supabaseUrl),'https://fixture.supabase.co');
+  assert.equal(await app.locator('#connectName').textContent(),'Vagas públicas');
   assert.equal(await app.locator('#mActive').textContent(),'1');
   assert.match(await app.locator('#jobList').textContent(),/Situação a confirmar/);
   assert.match(await app.locator('#jobList').textContent(),/Não avaliada/);
