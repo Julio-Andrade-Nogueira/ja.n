@@ -24,6 +24,27 @@ jobs:
         id: collect
         continue-on-error: true
         run: python -m collector.run --dry-run
+      - name: Diagnose Lever title normalization against the same public API
+        run: |
+          python - <<'PY'
+          import json
+          from collector.http import Http
+          from collector.sources import fetch_snapshot
+          from collector.normalize import normalize, plain
+          source = {'type': 'lever', 'board': 'xsolla', 'company': 'Xsolla'}
+          rows = fetch_snapshot(Http(), source)
+          repaired = []
+          for row in rows:
+              previous = plain(row.get('text'))
+              if not previous or len(previous) > 500:
+                  repaired.append({'field': 'text', 'external_id': row['id'],
+                                   'raw_value': row.get('text'), 'previous_length': len(previous),
+                                   'normalized_title': normalize(row, source)['title']})
+          message = json.dumps({'seen': len(rows), 'repaired': repaired}, ensure_ascii=True)
+          # Annotation data is escaped so source text cannot inject workflow commands.
+          message = message.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+          print('::notice title=Lever title diagnosis::' + message)
+          PY
       - name: Upload the real collection report
         if: always()
         uses: actions/upload-artifact@v4
