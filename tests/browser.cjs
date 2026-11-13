@@ -28,6 +28,8 @@ test('Pages prefix, legacy data, filters, auth, private sync, account switching 
   const executable=process.env.CHROMIUM_EXECUTABLE||await fs.access('/usr/bin/chromium').then(()=>'/usr/bin/chromium',()=>undefined);
   browser=await chromium.launch({headless:true,executablePath:executable,args:['--no-sandbox']});
   const local=await browser.newContext();
+  // Keep the local-mode test deterministic even after public Supabase configuration is filled.
+  await local.route('**/radar-assets/config.js',route=>route.fulfill({contentType:'application/javascript',body:'window.GAMEJOBS_CONFIG={supabaseUrl:"",supabasePublishableKey:""}'}));
   await local.addInitScript(()=>{if(!localStorage.getItem('gamejobs-radar-v1'))localStorage.setItem('gamejobs-radar-v1',JSON.stringify({jobs:[{id:'legacy',title:'Legacy fixture',company:'Fixture',status:'unverified'}],states:{legacy:{notes:'preserved legacy note',saved:true}}}))});
   const page=await local.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto(base);await page.waitForURL('**/painel/radar.html');await page.locator('.job-title').waitFor();

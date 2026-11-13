@@ -1,15 +1,17 @@
 """Bounded HTTP. No scraping, bypasses, credentials in logs, or unsafe redirects."""
 import json
 import time
+from http.client import HTTPException
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import Request, build_opener, HTTPRedirectHandler
 
 
 class FetchError(RuntimeError):
-    def __init__(self, message, status=None):
+    def __init__(self, message, status=None, category='source'):
         super().__init__(message)
         self.status = status
+        self.category = category
 
 
 class NoRedirect(HTTPRedirectHandler):
@@ -44,9 +46,11 @@ class Http:
                 if status in (429, 500, 502, 503, 504) and attempt < 2 and retryable:
                     retry_after = exc.headers.get('Retry-After', '')
                     if retry_after.isdigit() and int(retry_after) > 30:
-                        raise FetchError('Rate limited; retry in a later run', status) from None
+                        raise FetchError('Rate limited; retry in a later run', status, category='http') from None
                     self.sleep(int(retry_after) if retry_after.isdigit() else 2 ** (attempt + 1))
                     continue
-                raise FetchError(f'HTTP {status}', status) from None
-            except (URLError, TimeoutError, OSError, ValueError):
-                raise FetchError('Network failure or invalid JSON') from None
+                raise FetchError(f'HTTP {status}', status, category='http') from None
+            except (URLError, TimeoutError, OSError, HTTPException):
+                raise FetchError('Network connection failed (DNS, TLS, proxy or timeout)', category='network') from None
+            except ValueError:
+                raise FetchError('Response is not valid JSON', category='source') from None

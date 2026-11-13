@@ -27,7 +27,9 @@ Os testes verificam:
 
 As respostas de API nos testes são **fixtures**, não vagas reais. Os testes locais não comprovam que as credenciais, e-mail, políticas de um projeto remoto ou APIs de terceiros estejam funcionando na sua conta.
 
-Os PRs executam os testes Python no workflow Pages preservado e a suíte completa no novo **Radar integration checks**. Nenhum deles usa Secrets. Só o workflow separado de coleta recebe a chave administrativa.
+Os PRs executam os testes Python no workflow Pages preservado e a suíte completa no **Radar integration checks**. Um job independente **Collector live dry-run (no Secrets)** também executa `python -m collector.run --dry-run`, sem depender do job de testes. Ele faz checkout do SHA da branch do PR e consulta as três fontes reais (Wildlife Studios, Epic Games e Xsolla) sem credenciais ou acesso ao banco. Nenhum desses jobs referencia GitHub Secrets. Só o workflow separado de coleta com escrita recebe a chave administrativa.
+
+O job real disponibiliza `work/collector-report.json` como artefato **collector-live-dry-run-report** por 14 dias, inclusive quando a coleta falha. O resumo do Actions mostra, por fonte, resultado, contagem e classificação do erro; o JSON também registra os endpoints consultados. As categorias são `network` (conexão, DNS, TLS, proxy ou timeout), `http` (status devolvido pelo serviço), `source` (JSON/contrato/dados incompatíveis) e `code` (exceção do programa). Falhas de rede/HTTP não são atribuídas automaticamente ao código. Código de saída **0** indica sucesso, **2** indica somente falhas externas de rede/HTTP e **1** indica problema de código, dados/contrato ou relatório inválido. Tanto erros externos quanto erros de código reprovam o job com mensagens diferentes; não há `continue-on-error` no resultado final. Um relatório ausente, incompleto ou sem as três fontes também reprova. Não é preciso fazer merge ou publicar para executar esse teste no PR.
 
 ## Coleta real sem escrita
 
@@ -35,7 +37,7 @@ Os PRs executam os testes Python no workflow Pages preservado e a suíte complet
 python -m collector.run --dry-run --report work/collector-report.json
 ```
 
-Esse comando consulta somente APIs oficiais e não exige Supabase. Leia o relatório: `dry_run: true`, fontes, contagens e erros. Um erro faz o comando sair com status 1. Falha de rede não produz vagas demonstrativas nem encerramentos. Execute numa rede que permita `boards-api.greenhouse.io` e `api.lever.co`, ou use **Run workflow** com `dry_run` habilitado no GitHub.
+Esse comando consulta somente APIs oficiais e não exige Supabase. Leia o relatório: `dry_run: true`, fontes, resultados individuais, contagens e erros classificados. O comando retorna 2 para falhas exclusivamente de rede/HTTP e 1 para demais falhas. Falha de rede não produz vagas demonstrativas nem encerramentos. Execute numa rede que permita `boards-api.greenhouse.io` e `api.lever.co`, ou confira o job independente do PR.
 
 ## Testar o Supabase real após a configuração
 
