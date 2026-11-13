@@ -38,6 +38,7 @@ class Text(HTMLParser):
 def plain(value):
     parser = Text()
     parser.feed(html.unescape(str(value or '')))
+    parser.close()  # Flush trailing text buffered around incomplete entity references.
     return '\n'.join(re.sub(r'\s+', ' ', line).strip()
                      for line in ''.join(parser.parts).splitlines() if line.strip())
 
@@ -170,9 +171,15 @@ def normalize(raw, source):
     kind, board = source['type'], source['board']
     if not isinstance(raw, dict) or not raw.get('id'):
         raise ValueError('Missing source id')
-    title = plain(raw.get('title') if kind == 'greenhouse' else raw.get('text'))
+    # ATS title fields are text, not HTML descriptions. Parsing them as markup
+    # erases literal angle brackets (and can erase the entire supplied title).
+    title_field = 'title' if kind == 'greenhouse' else 'text'
+    raw_title = raw.get(title_field)
+    if not isinstance(raw_title, str):
+        raise ValueError(f'Invalid title: {title_field} must be a string')
+    title = re.sub(r'\s+', ' ', html.unescape(raw_title)).strip()
     if not title or len(title) > 500:
-        raise ValueError('Invalid title')
+        raise ValueError(f'Invalid title: {title_field} has {len(title)} characters after whitespace normalization')
     if kind == 'greenhouse':
         url = raw.get('absolute_url', '')
         location = (raw.get('location') or {}).get('name') or ''

@@ -9,6 +9,13 @@ from .normalize import normalize
 from .repository import Repository
 from .scoring import assess
 from .sources import endpoint, fetch_snapshot
+from .report import report_exit_code
+
+
+def error_details(exc):
+    return dict(error=str(exc)[:160], error_type=type(exc).__name__,
+                category=exc.category if isinstance(exc, FetchError) else 'source' if isinstance(exc, ValueError) else 'code',
+                http_status=getattr(exc, 'status', None))
 
 
 def missing_patch(origin, now, detail_status=None):
@@ -38,15 +45,18 @@ def collect(sources, repo=None, http=None, now=None):
 def _collect(sources, repo=None, http=None, now=None, run_id=None):
     http = http or Http()
     now = now or datetime.now(timezone.utc).isoformat()
-    summary = dict(sources=0, seen=0, new=0, updated=0, duplicates=0, missing=0, closed=0, errors=[])
+    summary = dict(sources=0, seen=0, new=0, updated=0, duplicates=0, missing=0, closed=0, errors=[], source_results=[])
     touched = set()
     for source in sources:
         if not source.get('enabled', True):
             continue
         label = f"{source['type']}:{source['board']}"
         summary['sources'] += 1
+        source_result = dict(source=label, status='running', seen=0)
+        summary['source_results'].append(source_result)
         previous = []
         try:
+            source_result['endpoint'] = endpoint(source)
             previous = repo.origins(source) if repo else []
             raw_jobs = fetch_snapshot(http, source)
             # All-or-nothing snapshot validation. One malformed job blocks absence reconciliation.
@@ -54,7 +64,9 @@ def _collect(sources, repo=None, http=None, now=None, run_id=None):
             for job in jobs:
                 job.update(assess(job))
         except (FetchError, ValueError, KeyError, TypeError) as exc:
-            summary['errors'].append({'source':label, 'error':str(exc)[:160]})
+            details = error_details(exc)
+            summary['errors'].append({'source':label, **details})
+            source_result.update(status='failed', **details)
             if repo:
                 repo.record(run_id, source, 'error', status=getattr(exc, 'status', None), detail=str(exc)[:160])
                 for origin in previous:
@@ -62,6 +74,7 @@ def _collect(sources, repo=None, http=None, now=None, run_id=None):
                         repo.update_origin(origin, {'status':'unverified', 'last_checked_at':now})
                         touched.add(origin['job_id'])
             continue
+        source_result.update(status='success', seen=len(jobs))
         old = {o['external_id']:o for o in previous}
         seen = {j['external_id'] for j in jobs}
         keys = set()
@@ -95,7 +108,7 @@ def _collect(sources, repo=None, http=None, now=None, run_id=None):
                     detail = str(exc)
                     detail_error = detail_status not in (404, 410)
                     if detail_error:
-                        summary['errors'].append({'source':label, 'external_id':origin['external_id'], 'error':detail})
+                        summary['errors'].append({'source':label, 'external_id':origin['external_id'], **error_details(exc)})
             patch = missing_patch(origin, now, detail_status)
             if did_check:
                 patch['last_detail_checked_at'] = now
@@ -127,10 +140,11 @@ def main():
         summary['dry_run'] = args.dry_run
         report.write_text(json.dumps(summary, ensure_ascii=False, indent=2))
         print(json.dumps(summary, ensure_ascii=False))
-        return 1 if summary['errors'] else 0
+        return report_exit_code(summary)
     except Exception as exc:
         # Never print request headers, credential-bearing URLs, raw responses or traceback.
-        report.write_text(json.dumps({'fatal':type(exc).__name__, 'message':'Collection aborted; check configuration and database availability.'}))
+        report.write_text(json.dumps({'dry_run':args.dry_run, 'fatal':type(exc).__name__, 'category':'code',
+                                     'message':'Collection aborted; check code, configuration and database availability.'}))
         print(f'Collection aborted ({type(exc).__name__}); see configuration guide.', file=sys.stderr)
         return 1
 

@@ -8,6 +8,33 @@ on:
 permissions:
   contents: read
 jobs:
+  collector-live-dry-run:
+    name: Collector live dry-run (no Secrets)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Query the three real sources without database writes
+        id: collect
+        continue-on-error: true
+        run: python -m collector.run --dry-run
+      - name: Upload the real collection report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: collector-live-dry-run-report
+          path: work/collector-report.json
+          if-no-files-found: error
+          retention-days: 14
+      - name: Classify network, source contract and code failures
+        if: always()
+        run: python -m collector.report work/collector-report.json --expected-sources 3 --summary "$GITHUB_STEP_SUMMARY"
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 15

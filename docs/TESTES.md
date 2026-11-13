@@ -17,6 +17,7 @@ Se já houver Chromium instalado, use `CHROMIUM_EXECUTABLE=/caminho/do/chromium 
 Os testes verificam:
 
 - Normalização sem inventar publicação, salário, jornada ou idioma obrigatório; classificação de várias áreas e geografia.
+- Títulos (`text` na Lever e `title` na Greenhouse) tratados como texto: preservação de `<...>`, entidades e espaços normalizados. Título ausente, vazio, não textual ou acima de 500 caracteres reprova a fonte; não há substituição por descrição/URL nem truncamento. Um anúncio inválido entre anúncios válidos impede toda a reconciliação de ausências dessa fonte e mantém as origens como não verificadas, sem incrementar ausências nem consultar detalhes para encerrar vagas.
 - Identidade estável, remoção limitada de rastreadores, atualização de anúncios e prevenção de duplicatas por URL oficial.
 - Pontuação justificável e nota ausente quando não há evidência suficiente.
 - Encerramento com ausências reiteradas e 404/410 individual, preservando vagas em falhas de fonte, paginação incompleta ou dados inválidos.
@@ -25,9 +26,19 @@ Os testes verificam:
 - Cache separado por conta, retomada de alterações sem conexão, respostas atrasadas de outra conta e preservação de edições durante uma requisição.
 - Navegador Chromium com respostas Supabase controladas: redirecionamento `/ja.n/`, recursos relativos, dados antigos, modo fictício separado, todos os filtros, login, troca de conta, notas, favoritos, falhas e largura de tela de celular.
 
+O teste de navegador intercepta `config.js` separadamente em cada contexto: configuração vazia deve mostrar **Modo local**; configuração pública de fixture deve mostrar **Vagas públicas** antes do login. Assim, o teste independe do preenchimento do arquivo público versionado e não consulta o projeto Supabase real.
+
+### Regressão Xsolla (`Invalid title`)
+
+A investigação da execução `43523299033`, job `132222940882`, foi confirmada numa consulta real em CI: [run 43524727600, job 132227531464](https://github.com/Julio-Andrade-Nogueira/ja.n/actions/runs/43524727600/job/132227531464). O campo responsável é `text`, do anúncio Lever `e0816368-5dfc-4d76-92e1-dbcdd16848f9`, cujo título é exatamente `Middle/ Senior Backend Engineer (Golang&PHP)`.
+
+O código anterior passava esse texto ao `HTMLParser` e chamava somente `feed()`. A sequência `&PHP` sem ponto e vírgula fazia o parser reter o texto até `close()`, que não era chamado; `plain()` retornava vazio e a validação levantava `Invalid title`. Os títulos agora são tratados como texto, sem parsing HTML. O helper de descrições HTML também finaliza o parser para descarregar texto pendente. O teste usa o título real acima, sem substituição nem truncamento. A consulta de diagnóstico encontrou 186 anúncios da Xsolla e identificou esse único título como inválido no normalizador anterior. O passo temporário de diagnóstico foi removido após a confirmação.
+
 As respostas de API nos testes são **fixtures**, não vagas reais. Os testes locais não comprovam que as credenciais, e-mail, políticas de um projeto remoto ou APIs de terceiros estejam funcionando na sua conta.
 
-Os PRs executam os testes Python no workflow Pages preservado e a suíte completa no novo **Radar integration checks**. Nenhum deles usa Secrets. Só o workflow separado de coleta recebe a chave administrativa.
+Os PRs executam os testes Python no workflow Pages preservado e a suíte completa no **Radar integration checks**. Um job independente **Collector live dry-run (no Secrets)** também executa `python -m collector.run --dry-run`, sem depender do job de testes. Ele faz checkout do SHA da branch do PR e consulta as três fontes reais (Wildlife Studios, Epic Games e Xsolla) sem credenciais ou acesso ao banco. Nenhum desses jobs referencia GitHub Secrets. Só o workflow separado de coleta com escrita recebe a chave administrativa.
+
+O job real disponibiliza `work/collector-report.json` como artefato **collector-live-dry-run-report** por 14 dias, inclusive quando a coleta falha. O resumo do Actions mostra, por fonte, resultado, contagem e classificação do erro; o JSON também registra os endpoints consultados. As categorias são `network` (conexão, DNS, TLS, proxy ou timeout), `http` (status devolvido pelo serviço), `source` (JSON/contrato/dados incompatíveis) e `code` (exceção do programa). Falhas de rede/HTTP não são atribuídas automaticamente ao código. Código de saída **0** indica sucesso, **2** indica somente falhas externas de rede/HTTP e **1** indica problema de código, dados/contrato ou relatório inválido. Tanto erros externos quanto erros de código reprovam o job com mensagens diferentes; não há `continue-on-error` no resultado final. Um relatório ausente, incompleto ou sem as três fontes também reprova. Não é preciso fazer merge ou publicar para executar esse teste no PR.
 
 ## Coleta real sem escrita
 
@@ -35,7 +46,7 @@ Os PRs executam os testes Python no workflow Pages preservado e a suíte complet
 python -m collector.run --dry-run --report work/collector-report.json
 ```
 
-Esse comando consulta somente APIs oficiais e não exige Supabase. Leia o relatório: `dry_run: true`, fontes, contagens e erros. Um erro faz o comando sair com status 1. Falha de rede não produz vagas demonstrativas nem encerramentos. Execute numa rede que permita `boards-api.greenhouse.io` e `api.lever.co`, ou use **Run workflow** com `dry_run` habilitado no GitHub.
+Esse comando consulta somente APIs oficiais e não exige Supabase. Leia o relatório: `dry_run: true`, fontes, resultados individuais, contagens e erros classificados. O comando retorna 2 para falhas exclusivamente de rede/HTTP e 1 para demais falhas. Falha de rede não produz vagas demonstrativas nem encerramentos. Execute numa rede que permita `boards-api.greenhouse.io` e `api.lever.co`, ou confira o job independente do PR.
 
 ## Testar o Supabase real após a configuração
 

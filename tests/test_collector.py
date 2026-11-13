@@ -5,13 +5,14 @@ from datetime import datetime, timedelta, timezone
 from unittest.mock import Mock
 from urllib.parse import parse_qs, urlsplit
 from collector.http import FetchError, Http
-from collector.normalize import canonical_key, canonical_url, classify, geography, normalize, seniority
+from collector.normalize import canonical_key, canonical_url, classify, geography, normalize, plain, seniority
 from collector.repository import Repository
 from collector.run import collect, missing_patch
 from collector.scoring import assess
 from collector.sources import fetch_snapshot
 
 SOURCE = dict(type='greenhouse', board='test-board', company='Fixture studio')
+LEVER_SOURCE = dict(type='lever', board='xsolla', company='Xsolla')
 
 
 def fixture(**changes):
@@ -22,7 +23,53 @@ def fixture(**changes):
                 **changes)
 
 
+def lever_fixture(**changes):
+    # Controlled contract fixture, not a real vacancy.
+    return {**dict(id='fixture-lever', text='Fixture QA Tester',
+                   hostedUrl='https://jobs.lever.co/xsolla/fixture-lever',
+                   categories={'location': 'Brazil'}), **changes}
+
+
 class NormalizationTests(unittest.TestCase):
+    def test_xsolla_title_with_bare_ampersand_is_preserved(self):
+        # Public Lever record captured by CI run 43524727600, job 132227531464.
+        external_id = 'e0816368-5dfc-4d76-92e1-dbcdd16848f9'
+        title = 'Middle/ Senior Backend Engineer (Golang&PHP)'
+        raw = lever_fixture(id=external_id, text=title,
+                            hostedUrl=f'https://jobs.lever.co/xsolla/{external_id}')
+        job = normalize(raw, LEVER_SOURCE)
+        self.assertEqual(job['title'], title)
+        self.assertEqual(job['external_id'], external_id)
+
+    def test_html_descriptions_flush_trailing_text_with_bare_ampersand(self):
+        text = 'Middle/ Senior Backend Engineer (Golang&PHP)'
+        self.assertEqual(plain(text), text)
+        self.assertEqual(plain('<p>Requirements</p>Golang&PHP'), 'Requirements\nGolang&PHP')
+        self.assertEqual(plain('<script>hidden</script><p>Golang &amp; PHP</p>'), 'Golang & PHP')
+
+    def test_title_text_preserves_literal_brackets_and_decodes_entities(self):
+        for source, raw, field in [(LEVER_SOURCE, lever_fixture(), 'text'),
+                                   (SOURCE, fixture(), 'title')]:
+            for supplied, expected in [('<Fixture QA Tester>', '<Fixture QA Tester>'),
+                                       ('Fixture <Tools> Engineer', 'Fixture <Tools> Engineer'),
+                                       ('&lt;Fixture QA Tester&gt; &amp; Tools', '<Fixture QA Tester> & Tools'),
+                                       (' \tFixture\u00a0QA\n Tester \r\n', 'Fixture QA Tester')]:
+                with self.subTest(source=source['type'], supplied=supplied):
+                    job = normalize({**raw, field: supplied}, source)
+                    self.assertEqual(job['title'], expected)
+
+    def test_invalid_title_is_not_coerced_fabricated_or_truncated(self):
+        for source, raw, field in [(LEVER_SOURCE, lever_fixture(), 'text'),
+                                   (SOURCE, fixture(), 'title')]:
+            for supplied in (None, '', ' \t\u00a0\r\n ', [], {}, 42, True, 'x' * 501):
+                with self.subTest(source=source['type'], supplied=supplied):
+                    # Alternate fields/description must not become invented titles.
+                    item = {**raw, 'description': 'Fixture description', field: supplied}
+                    item['title' if field == 'text' else 'text'] = 'Not the source title'
+                    with self.assertRaisesRegex(ValueError, f'Invalid title: {field}'):
+                        normalize(item, source)
+            self.assertEqual(normalize({**raw, field: 'x' * 500}, source)['title'], 'x' * 500)
+
     def test_unknown_facts_are_not_estimated(self):
         job = normalize(fixture(updated_at='2026-11-13T10:00:00Z'), SOURCE)
         for field in ('posted_at','deadline_at','salary_min','salary_max','hours_per_day','weekly_hours'):
@@ -81,6 +128,42 @@ class NormalizationTests(unittest.TestCase):
 
 
 class ReconciliationTests(unittest.TestCase):
+    def test_invalid_lever_title_rejects_entire_snapshot_without_absence_checks(self):
+        now = datetime.now(timezone.utc)
+        for title in (' \t ', None, 'x' * 501):
+            with self.subTest(title=title):
+                http = Mock()
+                # A detail 410 would close the absent origin if reconciliation ran.
+                http.request.side_effect = [[lever_fixture(), lever_fixture(id='invalid', text=title)],
+                                            FetchError('HTTP 410', 410)]
+                previous = dict(external_id='absent', job_id='old', status='active',
+                                missing_count=2, missing_since=(now-timedelta(days=2)).isoformat())
+                repo = Mock()
+                repo.origins.return_value = [previous]
+                result = collect([LEVER_SOURCE], repo, http, now.isoformat())
+                self.assertEqual(result['source_results'][0]['status'], 'failed')
+                self.assertEqual(result['errors'][0]['category'], 'source')
+                self.assertIn('Invalid title: text', result['errors'][0]['error'])
+                self.assertEqual((result['seen'], result['missing'], result['closed']), (0, 0, 0))
+                repo.save_seen.assert_not_called()
+                self.assertEqual(http.request.call_count, 1)
+                patch = repo.update_origin.call_args.args[1]
+                self.assertEqual(patch['status'], 'unverified')
+                self.assertNotIn('missing_count', patch)
+                self.assertNotIn('missing_since', patch)
+                self.assertEqual(repo.finish.call_args.args[1], 'partial')
+
+    def test_literal_title_is_not_dropped_from_a_valid_lever_snapshot(self):
+        http = Mock()
+        http.request.return_value = [lever_fixture(), lever_fixture(id='brackets', text='<Fixture QA>')]
+        repo = Mock()
+        repo.origins.return_value = []
+        result = collect([LEVER_SOURCE], repo, http)
+        self.assertEqual(result['errors'], [])
+        self.assertEqual(result['source_results'][0]['seen'], 2)
+        self.assertEqual(repo.save_seen.call_count, 2)
+        self.assertEqual(repo.save_seen.call_args.args[0]['title'], '<Fixture QA>')
+
     def test_closure_needs_aged_absence_and_explicit_detail_not_found(self):
         now=datetime.now(timezone.utc)
         old=dict(missing_count=1,missing_since=(now-timedelta(hours=25)).isoformat())
