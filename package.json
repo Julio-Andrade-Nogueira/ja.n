@@ -1,0 +1,12 @@
+{
+  "name": "gamejobs-radar-checks",
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/*.test.cjs",
+    "test:browser": "node --test tests/browser.cjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.16",
+    "playwright": "1.65.0"
+  }
+}

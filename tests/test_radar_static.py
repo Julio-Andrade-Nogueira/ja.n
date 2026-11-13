@@ -1,5 +1,7 @@
 """Checks for the static site as served from the /ja.n/ project prefix."""
 import re
+import base64
+import json
 import unittest
 from html.parser import HTMLParser
 from pathlib import Path
@@ -48,6 +50,8 @@ class RadarStaticTests(unittest.TestCase):
         self.assertEqual(self.refs.resources, [
             'radar-assets/styles.css',
             'radar-assets/config.js',
+            'radar-assets/supabase-client.js',
+            'radar-assets/sync.js',
             'radar-assets/app.js',
         ])
         for ref in self.refs.resources:
@@ -67,12 +71,20 @@ class RadarStaticTests(unittest.TestCase):
         for ref in self.refs.resources:
             self.assertFalse(urlsplit(ref).scheme, ref)
 
-    def test_configuration_stays_empty(self):
+    def test_only_public_configuration_and_separate_collection_workflow(self):
         config = (PAGE.parent / 'radar-assets/config.js').read_text(encoding='utf-8')
-        for key in ('supabaseUrl', 'supabasePublishableKey'):
-            self.assertRegex(config, rf'{key}:\s*""')
+        key = re.search(r'supabasePublishableKey:\s*["\']([^"\']*)', config).group(1)
+        if key and not key.startswith('sb_publishable_'):
+            payload = key.split('.')[1]
+            self.assertEqual(json.loads(base64.urlsafe_b64decode(payload + '=' * (-len(payload) % 4)))['role'], 'anon')
         self.assertNotIn('supabase.min.js', self.html)
-        self.assertFalse((ROOT / '.github/workflows/gamejobs-sync.yml').exists())
+        self.assertTrue((ROOT / '.github/workflows/gamejobs-sync.yml').is_file())
+
+    def test_root_redirect_is_relative(self):
+        index = (ROOT / 'index.html').read_text()
+        self.assertIn('content="0;url=painel/radar.html"', index)
+        self.assertIn('href="painel/radar.html"', index)
+        self.assert_published_file('../index.html')
 
     def test_script_dom_references_exist(self):
         app = (PAGE.parent / 'radar-assets/app.js').read_text(encoding='utf-8')
