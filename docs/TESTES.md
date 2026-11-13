@@ -28,6 +28,12 @@ Os testes verificam:
 
 O teste de navegador intercepta `config.js` separadamente em cada contexto: configuração vazia deve mostrar **Modo local**; configuração pública de fixture deve mostrar **Vagas públicas** antes do login. Assim, o teste independe do preenchimento do arquivo público versionado e não consulta o projeto Supabase real.
 
+### Regressão Xsolla (`Invalid title`)
+
+A investigação da execução `43523299033`, job `132222940882`, foi confirmada numa consulta real em CI: [run 43524727600, job 132227531464](https://github.com/Julio-Andrade-Nogueira/ja.n/actions/runs/43524727600/job/132227531464). O campo responsável é `text`, do anúncio Lever `e0816368-5dfc-4d76-92e1-dbcdd16848f9`, cujo título é exatamente `Middle/ Senior Backend Engineer (Golang&PHP)`.
+
+O código anterior passava esse texto ao `HTMLParser` e chamava somente `feed()`. A sequência `&PHP` sem ponto e vírgula fazia o parser reter o texto até `close()`, que não era chamado; `plain()` retornava vazio e a validação levantava `Invalid title`. Os títulos agora são tratados como texto, sem parsing HTML. O helper de descrições HTML também finaliza o parser para descarregar texto pendente. O teste usa o título real acima, sem substituição nem truncamento. A consulta de diagnóstico encontrou 186 anúncios da Xsolla e identificou esse único título como inválido no normalizador anterior. O passo temporário de diagnóstico foi removido após a confirmação.
+
 As respostas de API nos testes são **fixtures**, não vagas reais. Os testes locais não comprovam que as credenciais, e-mail, políticas de um projeto remoto ou APIs de terceiros estejam funcionando na sua conta.
 
 Os PRs executam os testes Python no workflow Pages preservado e a suíte completa no **Radar integration checks**. Um job independente **Collector live dry-run (no Secrets)** também executa `python -m collector.run --dry-run`, sem depender do job de testes. Ele faz checkout do SHA da branch do PR e consulta as três fontes reais (Wildlife Studios, Epic Games e Xsolla) sem credenciais ou acesso ao banco. Nenhum desses jobs referencia GitHub Secrets. Só o workflow separado de coleta com escrita recebe a chave administrativa.

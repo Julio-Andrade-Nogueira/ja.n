@@ -38,6 +38,7 @@ class Text(HTMLParser):
 def plain(value):
     parser = Text()
     parser.feed(html.unescape(str(value or '')))
+    parser.close()  # Flush trailing text buffered around incomplete entity references.
     return '\n'.join(re.sub(r'\s+', ' ', line).strip()
                      for line in ''.join(parser.parts).splitlines() if line.strip())
 

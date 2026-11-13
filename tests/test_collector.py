@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from unittest.mock import Mock
 from urllib.parse import parse_qs, urlsplit
 from collector.http import FetchError, Http
-from collector.normalize import canonical_key, canonical_url, classify, geography, normalize, seniority
+from collector.normalize import canonical_key, canonical_url, classify, geography, normalize, plain, seniority
 from collector.repository import Repository
 from collector.run import collect, missing_patch
 from collector.scoring import assess
@@ -31,6 +31,22 @@ def lever_fixture(**changes):
 
 
 class NormalizationTests(unittest.TestCase):
+    def test_xsolla_title_with_bare_ampersand_is_preserved(self):
+        # Public Lever record captured by CI run 43524727600, job 132227531464.
+        external_id = 'e0816368-5dfc-4d76-92e1-dbcdd16848f9'
+        title = 'Middle/ Senior Backend Engineer (Golang&PHP)'
+        raw = lever_fixture(id=external_id, text=title,
+                            hostedUrl=f'https://jobs.lever.co/xsolla/{external_id}')
+        job = normalize(raw, LEVER_SOURCE)
+        self.assertEqual(job['title'], title)
+        self.assertEqual(job['external_id'], external_id)
+
+    def test_html_descriptions_flush_trailing_text_with_bare_ampersand(self):
+        text = 'Middle/ Senior Backend Engineer (Golang&PHP)'
+        self.assertEqual(plain(text), text)
+        self.assertEqual(plain('<p>Requirements</p>Golang&PHP'), 'Requirements\nGolang&PHP')
+        self.assertEqual(plain('<script>hidden</script><p>Golang &amp; PHP</p>'), 'Golang & PHP')
+
     def test_title_text_preserves_literal_brackets_and_decodes_entities(self):
         for source, raw, field in [(LEVER_SOURCE, lever_fixture(), 'text'),
                                    (SOURCE, fixture(), 'title')]:
