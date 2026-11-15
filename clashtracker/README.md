@@ -43,3 +43,17 @@ Projeto independente; não afiliado à Supercell, à RoyaleAPI ou à Cloudflare.
 - Renova o cache de referências para `ct_db_v2` e limita sua validade a 24 horas; preserva a tag e o histórico locais.
 - Os totais são **estimativas brutas**, e dados ausentes continuam explicitamente sinalizados. Se o GitHub Raw estiver inacessível, a referência ainda pode falhar.
 - Para aplicar após o merge, abra o ClashTracker pelo GitHub Pages e recarregue a página com `Ctrl+F5`.
+
+## Correção v0.1.2 — CORS no Cloudflare Worker
+
+**Sintoma:** o navegador acusa `Access-Control-Allow-Origin: *, *` e `Failed to fetch`, mesmo com a tag correta.
+
+1. Acesse a Cloudflare: **Workers & Pages > clashtracker-api > Edit code**.
+2. Substitua **todo** o código do Worker pelo conteúdo atualizado de [worker/cloudflare-worker.js](worker/cloudflare-worker.js). Clique em **Deploy**. Os secrets já criados nas configurações não devem ser colocados no código.
+3. Na aba **Network** do DevTools, recarregue o ClashTracker e observe a requisição `/player?tag=...`. O cabeçalho `Access-Control-Allow-Origin` deve aparecer **uma vez só**, com `https://julio-andrade-nogueira.github.io`; o cabeçalho `X-ClashTracker-Worker-Version` deve ser `0.1.2`.
+4. **Se aparecer `*, *` mesmo após substituir o Worker**, procure algum segundo código ou regra na Cloudflare que acrescente esse cabeçalho (por exemplo, resposta do Worker, middleware ou regra de cabeçalhos de resposta). Desative o duplicado; não use `no-cors`, pois a resposta ficaria inacessível ao JavaScript.
+5. Após publicar também a atualização do HTML no GitHub Pages, force um recarregamento completo (`Ctrl + Shift + R` no desktop) e confirme o selo **V0.1.2** no cabeçalho. O Sky Wagon passa a aparecer em **Máquinas de cerco**.
+
+O endpoint `/health` verifica a presença de variáveis, mas **não testa CORS por si só**. A revisão do cabeçalho `/player` no navegador é necessária.
+
+O Worker continua utilizando `COC_API_KEY` (Secret) e `ALLOWED_PLAYER_TAG` (Text). **Nunca coloque valores de credenciais no GitHub.**

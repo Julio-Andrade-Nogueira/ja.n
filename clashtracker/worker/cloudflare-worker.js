@@ -4,8 +4,11 @@
  * API intermediada pelo proxy documentado da RoyaleAPI (IP permitido: 45.79.218.79).
  * Não coloque segredos no HTML nem neste arquivo.
  */
+const SITE_ORIGIN = 'https://julio-andrade-nogueira.github.io';
 const cors = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': SITE_ORIGIN,
+  'Vary': 'Origin',
+  'X-ClashTracker-Worker-Version': '0.1.2',
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
   'Access-Control-Max-Age': '86400',
@@ -33,7 +36,12 @@ export default {
     const key = new Request(`${url.origin}/player?tag=${encodeURIComponent(tag)}`, {method:'GET'});
     const cache = globalThis.caches?.default;
     const hit = cache ? await cache.match(key) : null;
-    if (hit) return new Response(hit.body, {status:hit.status, headers:{...Object.fromEntries(hit.headers), ...cors, 'X-ClashTracker-Cache':'HIT'}});
+    if (hit) {
+      const headers = new Headers(hit.headers);
+      for (const [name, value] of Object.entries(cors)) headers.set(name, value);
+      headers.set('X-ClashTracker-Cache', 'HIT');
+      return new Response(hit.body, {status:hit.status, headers});
+    }
     try {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 14000);

@@ -14,7 +14,7 @@
 </head>
 <body>
 <div class="shell">
-<header class="top"><div class="brand"><div class="brandmark">C</div><div class="brandtext"><strong>ClashTracker</strong><small>Seu progresso, em detalhes</small></div></div><div class="tagline">V0.1.1 · VILA PRINCIPAL</div></header>
+<header class="top"><div class="brand"><div class="brandmark">C</div><div class="brandtext"><strong>ClashTracker</strong><small>Seu progresso, em detalhes</small></div></div><div class="tagline">V0.1.2 · VILA PRINCIPAL</div></header>
 <section class="panel setup" id="settingsPanel">
 <div class="setuphead"><div><div class="eyebrow">Conexão com a Supercell</div><h2 style="margin:4px 0 0;font-size:17px">Vincular sua vila</h2><p>Informe a tag e o endereço do seu Cloudflare Worker. A chave não é inserida neste arquivo.</p></div><button class="btn small ghost" type="button" id="toggleHelp">Instruções</button></div>
 <div class="setupgrid"><div class="f"><label for="tag">TAG DO JOGADOR</label><input class="input" id="tag" autocomplete="off" placeholder="#ABC123" autocapitalize="characters" spellcheck="false" maxlength="16"></div><div class="f"><label for="endpoint">ENDEREÇO DO WORKER (HTTPS)</label><input class="input" id="endpoint" autocomplete="off" spellcheck="false" placeholder="https://meu-clashtracker.usuario.workers.dev"></div></div>
@@ -148,7 +148,7 @@ async function getPlayer(){if(loading)return;let tag=normalizeTag($('tag').value
  demo=false;loading=true;$('load').disabled=true;saveConfig();status('Consultando sua tag...');try{
  const controller=new AbortController(),t=setTimeout(()=>controller.abort(),19000);let response;try{response=await fetch(base+'/player?tag='+encodeURIComponent(tag),{signal:controller.signal,cache:'no-store'})}finally{clearTimeout(t)}
  let data;try{data=await response.json()}catch{throw Error('Resposta não é JSON. Confira a URL do Worker.')}if(!response.ok)throw Error(data.error||'Falha na consulta (HTTP '+response.status+').');if(!data.tag||!Array.isArray(data.troops))throw Error('Resposta inválida da API.');player=data;await startDisplay();
- }catch(e){status(e.name==='AbortError'?'A conexão excedeu o tempo. Verifique internet e Worker.':e.message,'err')}finally{loading=false;$('load').disabled=false}}
+ }catch(e){status(e.name==='AbortError'?'A conexão excedeu o tempo. Verifique internet e Worker.':(e instanceof TypeError && /fetch/i.test(e.message) ? 'Falha de rede ou CORS. Verifique se a URL do Worker está correta, se não há cabeçalhos Access-Control-Allow-Origin duplicados na Cloudflare e recarregue a página.' : e.message),'err')}finally{loading=false;$('load').disabled=false}}
 $('load').addEventListener('click',getPlayer);$('demo').addEventListener('click',showDemo);$('toggleHelp').addEventListener('click',()=>$('help').classList.toggle('hide'));
 $('collapse').addEventListener('click',()=>{$('settingsPanel').classList.toggle('hide');$('showSettings').classList.toggle('hide')});
 // Reabrir configurações mesmo depois de recolhidas.
