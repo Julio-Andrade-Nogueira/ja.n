@@ -35,3 +35,11 @@ Rastreador **não oficial** de unidades de Clash of Clans, acessível em celular
 - **A publicação e a integração real ainda não estão verificadas**: é necessário mesclar o PR, aguardar o deploy do GitHub Pages, configurar as duas contas e fazer uma consulta real.
 
 Projeto independente; não afiliado à Supercell, à RoyaleAPI ou à Cloudflare.
+
+## Correção v0.1.1 (referências)
+
+- Evita múltiplos erros HTTP 403 causados pelo CDN jsDelivr: dados e ícones são carregados diretamente de `raw.githubusercontent.com` (fonte pública).
+- Corrige o **Sky Wagon**: é uma máquina de cerco, não uma tropa. Referência: `data/home/siege-machines/sky-wagon.json`.
+- Renova o cache de referências para `ct_db_v2` e limita sua validade a 24 horas; preserva a tag e o histórico locais.
+- Os totais são **estimativas brutas**, e dados ausentes continuam explicitamente sinalizados. Se o GitHub Raw estiver inacessível, a referência ainda pode falhar.
+- Para aplicar após o merge, abra o ClashTracker pelo GitHub Pages e recarregue a página com `Ctrl+F5`.
