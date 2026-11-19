@@ -1,0 +1,79 @@
+name: Radar public Supabase check
+
+on:
+  push:
+    branches: [fix/radar-supabase-connection]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  public-connection:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check the deployed page and existing public Supabase configuration
+        run: |
+          python - <<'PY'
+          import json, re, hashlib
+          from pathlib import Path
+          from urllib.request import Request, urlopen
+          from urllib.error import HTTPError, URLError
+
+          site = 'https://julio-andrade-nogueira.github.io/ja.n/painel/'
+          config_path = Path('painel/radar-assets/config.js')
+          def config(text):
+              return {key: re.search(key + r':\s*["\']([^"\']*)', text).group(1)
+                      for key in ('supabaseUrl', 'supabasePublishableKey')}
+          cfg = config(config_path.read_text())
+          result = {'checks': [], 'writes': False}
+          def read(label, url, headers=None):
+              try:
+                  with urlopen(Request(url, headers=headers or {}), timeout=30) as response:
+                      data = response.read(2_000_001)
+                      if len(data) > 2_000_000:
+                          raise ValueError('Response exceeds diagnostic limit')
+                      result['checks'].append({'check': label, 'http_status': response.status})
+                      return data.decode('utf-8')
+              except HTTPError as error:
+                  result['checks'].append({'check': label, 'http_status': error.code})
+              except (URLError, TimeoutError):
+                  result['checks'].append({'check': label, 'error': 'network'})
+              return None
+          live_config = read('published_config', site + 'radar-assets/config.js')
+          if live_config is not None:
+              current = config(live_config)
+              result['published_config_matches'] = current == cfg
+              result['published_key_present'] = bool(current['supabasePublishableKey'])
+          for name in ['radar.html', 'radar-assets/supabase-client.js', 'radar-assets/sync.js', 'radar-assets/app.js']:
+              value = read(name, site + name)
+              if value is not None:
+                  result['checks'][-1]['matches_repository'] = value == Path('painel', name).read_text()
+          headers = {'apikey': cfg['supabasePublishableKey']}
+          rows = read('anonymous_jobs', cfg['supabaseUrl'] + '/rest/v1/radar_jobs?select=id&limit=1', headers)
+          if rows is not None:
+              result['anonymous_rows_returned'] = len(json.loads(rows))
+          settings = read('auth_settings', cfg['supabaseUrl'] + '/auth/v1/settings', headers)
+          if settings is not None:
+              data = json.loads(settings)
+              result['email_auth_enabled'] = data.get('external', {}).get('email')
+          Path('public-supabase-report.json').write_text(json.dumps(result, indent=2))
+          # Only status/boolean/count data is reported; keys and job records are omitted.
+          print('::notice title=Public Supabase diagnosis::' + json.dumps(result))
+          assert all(c.get('http_status') == 200 for c in result['checks']), 'A public connection check failed'
+          assert result.get('published_config_matches'), 'Published configuration differs from the repository'
+          assert all(c.get('matches_repository', True) for c in result['checks']), 'Published application differs from the repository'
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: public-supabase-report
+          path: public-supabase-report.json
+          retention-days: 7
