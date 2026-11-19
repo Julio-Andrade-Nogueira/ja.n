@@ -11,7 +11,7 @@ permissions:
 jobs:
   public-connection:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
@@ -71,9 +71,51 @@ jobs:
           assert result.get('published_config_matches'), 'Published configuration differs from the repository'
           assert all(c.get('matches_repository', True) for c in result['checks']), 'Published application differs from the repository'
           PY
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Open the published Radar with the real public Supabase connection
+        run: |
+          node - <<'JS'
+          const {chromium} = require('playwright');
+          const assert = require('node:assert/strict');
+          const fs = require('node:fs/promises');
+          (async () => {
+            const browser = await chromium.launch({headless:true});
+            try {
+              const page = await browser.newPage({viewport:{width:1440,height:1000}});
+              const errors = [];
+              page.on('pageerror', error => errors.push(error.message));
+              await page.goto('https://julio-andrade-nogueira.github.io/ja.n/painel/radar.html');
+              await page.waitForFunction(() => {
+                const label = document.getElementById('syncText')?.textContent || '';
+                return label.startsWith('Vagas atualizadas');
+              }, null, {timeout:60000});
+              assert.equal(await page.locator('#connectName').textContent(), 'Vagas públicas');
+              assert.match(await page.locator('#noticeText').textContent(), /Supabase/);
+              const jobs = Number(await page.locator('#resultCount').textContent());
+              await page.locator('#topSettings').click();
+              await page.locator('#authEmail').waitFor({state:'visible'});
+              await page.locator('#authPassword').waitFor({state:'visible'});
+              assert(await page.locator('#signIn').isVisible());
+              assert.deepEqual(errors, []);
+              const result = {mode:'Vagas públicas', visibleJobs:jobs, loginFormVisible:true,
+                              pageErrors:errors.length, databaseWrites:false, authenticated:false};
+              await fs.writeFile('public-browser-report.json', JSON.stringify(result,null,2));
+              console.log('::notice title=Published Radar browser diagnosis::' + JSON.stringify(result));
+            } finally {
+              await browser.close();
+            }
+          })().catch(error => {console.error(error.message);process.exitCode=1});
+          JS
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: public-supabase-report
-          path: public-supabase-report.json
+          path: |
+            public-supabase-report.json
+            public-browser-report.json
           retention-days: 7
